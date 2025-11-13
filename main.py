@@ -274,7 +274,7 @@ class FinanceTracker:
         balance = self.db.get_balance()
         balance_color = self.colors['success'] if balance >= 0 else self.colors['danger']
         
-        tk.Label(header_frame, text=f"💰 Balance: ${balance:,.2f}",
+        tk.Label(header_frame, text=f"💰 Denge: ${balance:,.2f}",
                 font=('Segoe UI', 20, 'bold'),
                 bg=self.colors['primary'],
                 fg=balance_color).pack(side=tk.RIGHT, padx=30, pady=20)
