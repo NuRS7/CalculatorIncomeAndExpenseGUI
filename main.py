@@ -25,7 +25,6 @@ class FinanceTracker:
         self.root = root
         self.root.title("💰 Kişisel Finans Yönetimi Pro")
 
-        # Make window responsive
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
         window_width = int(screen_width * 0.85)
@@ -34,17 +33,13 @@ class FinanceTracker:
         y = (screen_height - window_height) // 2
         self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-        # Allow window resizing
         self.root.minsize(1000, 700)
 
-        # Configure root grid for responsive layout
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
 
-        # Initialize database
         self.db = Database()
 
-        # Color scheme
         self.colors = {
             'primary': '#2c3e50',
             'secondary': '#3498db',
@@ -56,49 +51,38 @@ class FinanceTracker:
             'bg': '#ffffff'
         }
 
-        # Configure styles
         self.setup_styles()
 
-        # Create main container with responsive grid
         self.main_frame = ttk.Frame(root, style='Main.TFrame')
         self.main_frame.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
         self.main_frame.grid_rowconfigure(0, weight=1)
         self.main_frame.grid_columnconfigure(0, weight=1)
 
-        # Create menu
         self.create_menu()
-        # Show dashboard by default
         self.show_dashboard()
 
     def export_to_excel(self):
         try:
-            # Create a Pandas Excel writer
             file_path = os.path.join(os.path.expanduser('~'), 'Downloads', 'finance_report.xlsx')
             writer = pd.ExcelWriter(file_path, engine='openpyxl')
 
-            # Get all transactions
             transactions = self.db.get_all_transactions()
             if not transactions:
                 messagebox.showinfo(" Data yok", "Dışa aktarılacak işlem bulunamadı.")
                 return
 
-            # Convert to DataFrame
             df = pd.DataFrame(transactions)
 
-            # Write transactions to the first sheet
             df.to_excel(writer, sheet_name='İşlemler', index=False)
 
-            # Get category summary
             category_summary = self.db.get_category_summary()
             if category_summary:
                 df_summary = pd.DataFrame(category_summary)
                 df_summary.to_excel(writer, sheet_name='Kategori Özeti', index=False)
 
-            # Get workbook and worksheets
             workbook = writer.book
             ws_trans = writer.sheets['İşlemler']
 
-            # Format the transactions sheet
             for column in ws_trans.columns:
                 max_length = 0
                 column_letter = column[0].column_letter
@@ -111,15 +95,12 @@ class FinanceTracker:
                 adjusted_width = (max_length + 2) * 1.2
                 ws_trans.column_dimensions[column_letter].width = min(adjusted_width, 30)
 
-            # Add summary statistics
             if 'Kategori Özeti' in writer.sheets:
                 ws_summary = writer.sheets['Kategori Özeti']
 
-                # Create charts
                 self._create_pie_chart(workbook, ws_summary, df_summary, 'Gelir', 'Gelir Tablosu')
                 self._create_pie_chart(workbook, ws_summary, df_summary, 'Gider', 'Gider Tablosu')
 
-                # Add summary statistics
                 total_income = df_summary[df_summary['type'] == 'Gelir']['total_amount'].sum()
                 total_expenses = df_summary[df_summary['type'] == 'Gider']['total_amount'].sum()
                 net_balance = total_income - total_expenses
@@ -132,7 +113,6 @@ class FinanceTracker:
                      f"{(net_balance / total_income * 100 if total_income > 0 else 0):.1f}%" if total_income > 0 else 'N/A']
                 ]
 
-                # Add statistics to the summary sheet
                 ws_summary['E1'] = 'İstatistikler'
                 ws_summary['E1'].font = Font(bold=True, size=12)
 
@@ -140,10 +120,9 @@ class FinanceTracker:
                     ws_summary[f'E{i}'] = label
                     ws_summary[f'F{i}'] = value
                     ws_summary[f'E{i}'].font = Font(bold=True)
-                    if i == 3:  # Net Balance row
+                    if i == 3:
                         ws_summary[f'F{i}'].font = Font(bold=True, color='FF0000' if net_balance < 0 else '008000')
 
-            # Save the Excel file
             writer.close()
 
             messagebox.showinfo("Dışa aktarma başarılı",
@@ -153,12 +132,10 @@ class FinanceTracker:
             messagebox.showerror("Dışa aktarma Hatası", f"Excel'e dışa aktarılırken bir hata oluştu:\n{str(e)}")
 
     def _create_pie_chart(self, workbook, ws, df, trans_type, title):
-        # Filter data for the specified transaction type
         df_filtered = df[df['type'] == trans_type]
         if df_filtered.empty:
             return
 
-        # Create a pie chart
         pie = PieChart3D()
         labels = Reference(ws, min_col=1, min_row=2, max_row=len(df_filtered) + 1)
         data = Reference(ws, min_col=3, min_row=1, max_row=len(df_filtered) + 1)
@@ -167,7 +144,6 @@ class FinanceTracker:
         pie.set_categories(labels)
         pie.title = title
 
-        # Position the chart
         max_row = ws.max_row + 2
         ws.add_chart(pie, f"E{max_row}")
 
@@ -177,10 +153,8 @@ class FinanceTracker:
         style = ttk.Style()
         style.theme_use('clam')
 
-        # Main frame style
         style.configure('Main.TFrame', background=self.colors['light'])
 
-        # Custom button styles
         style.configure('Primary.TButton',
                         background=self.colors['primary'],
                         foreground='white',
@@ -206,36 +180,30 @@ class FinanceTracker:
     def create_menu(self):
         menubar = tk.Menu(self.root)
 
-        # File menu
         file_menu = tk.Menu(menubar, tearoff=0)
         file_menu.add_command(label="Excel'e Aktar", command=self.export_to_excel)
         file_menu.add_command(label="Pano", command=self.show_dashboard)
         file_menu.add_separator()
         file_menu.add_command(label="Çıkış", command=self.root.quit)
 
-        # Transaction menu
         trans_menu = tk.Menu(menubar, tearoff=0)
         trans_menu.add_command(label="Gelir Ekle", command=lambda: self.show_add_transaction("Income"))
         trans_menu.add_command(label="Gider Ekle", command=lambda: self.show_add_transaction("Expense"))
         trans_menu.add_separator()
         trans_menu.add_command(label="Tüm İşlemleri Görüntüle", command=self.show_transactions)
 
-        # Reports menu
         report_menu = tk.Menu(menubar, tearoff=0)
         report_menu.add_command(label="Günlük Rapor", command=lambda: self.show_report("Daily"))
         report_menu.add_command(label="Aylık Rapor", command=lambda: self.show_report("Monthly"))
         report_menu.add_command(label="Yıllık Rapor", command=lambda: self.show_report("Yearly"))
 
-        # Analytics menu
         analytics_menu = tk.Menu(menubar, tearoff=0)
         analytics_menu.add_command(label="İstatistiksel Analiz", command=self.show_statistics)
         analytics_menu.add_command(label="3 Boyutlu Görselleştirme", command=self.show_3d_analysis)
 
-        # Categories menu
         cat_menu = tk.Menu(menubar, tearoff=0)
         cat_menu.add_command(label="Kategorileri Yönet", command=self.manage_categories)
 
-        # Add menus to menubar
         menubar.add_cascade(label="Dosya", menu=file_menu)
         menubar.add_cascade(label="İşlemler", menu=trans_menu)
         menubar.add_cascade(label="Raporlar", menu=report_menu)
@@ -251,15 +219,12 @@ class FinanceTracker:
     def show_dashboard(self):
         self.clear_frame()
 
-        # Create main container with PanedWindow for resizable sections
         main_paned = ttk.PanedWindow(self.main_frame, orient=tk.VERTICAL)
         main_paned.pack(fill=tk.BOTH, expand=True)
 
-        # Top section - Stats and info
         top_frame = tk.Frame(main_paned, bg=self.colors['light'])
         main_paned.add(top_frame, weight=1)
 
-        # Dashboard header
         header_frame = tk.Frame(top_frame, bg=self.colors['primary'], height=80)
         header_frame.pack(fill=tk.X)
         header_frame.pack_propagate(False)
@@ -269,7 +234,6 @@ class FinanceTracker:
                  bg=self.colors['primary'],
                  fg='white').pack(side=tk.LEFT, padx=30, pady=20)
 
-        # Balance display
         balance = self.db.get_balance()
         balance_color = self.colors['success'] if balance >= 0 else self.colors['danger']
 
@@ -278,11 +242,9 @@ class FinanceTracker:
                  bg=self.colors['primary'],
                  fg=balance_color).pack(side=tk.RIGHT, padx=30, pady=20)
 
-        # Stats cards in scrollable frame
         stats_container = tk.Frame(top_frame, bg=self.colors['light'])
         stats_container.pack(fill=tk.X, padx=20, pady=15)
 
-        # Get statistics
         total_income = self.db.get_total_income()
         total_expenses = self.db.get_total_expenses()
         monthly_income = self.db.get_monthly_income()
@@ -307,21 +269,16 @@ class FinanceTracker:
             tk.Label(card, text=value, font=('Segoe UI', 18, 'bold'),
                      bg='white', fg=color).pack(pady=(5, 15))
 
-        # Bottom section - Charts (resizable)
         bottom_frame = tk.Frame(main_paned, bg=self.colors['light'])
         main_paned.add(bottom_frame, weight=3)
 
-        # Charts with PanedWindow for horizontal resizing
         charts_paned = ttk.PanedWindow(bottom_frame, orient=tk.HORIZONTAL)
         charts_paned.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # Add charts
         self.create_resizable_charts(charts_paned)
 
     def create_resizable_charts(self, parent_paned):
-        """Create resizable charts with interactive tooltips"""
 
-        # Get data
         expense_data = self.db.get_expenses_by_category()
         monthly_data = self.db.get_monthly_summary()
 
@@ -331,29 +288,23 @@ class FinanceTracker:
             parent_paned.add(no_data_label)
             return
 
-        # Left panel - Pie and Bar charts
         left_frame = tk.Frame(parent_paned, bg='white', relief='solid', bd=1)
         parent_paned.add(left_frame, weight=1)
 
-        # Right panel - Line and other charts
         right_frame = tk.Frame(parent_paned, bg='white', relief='solid', bd=1)
         parent_paned.add(right_frame, weight=1)
 
-        # Create left charts
         self.create_left_charts(left_frame, expense_data, monthly_data)
 
-        # Create right charts
         self.create_right_charts(right_frame, monthly_data)
 
     def create_left_charts(self, parent, expense_data, monthly_data):
 
         fig = Figure(figsize=(8, 10), facecolor='white')
 
-        # Colors
         colors_pie = ['#e74c3c', '#3498db', '#f39c12', '#2ecc71', '#9b59b6', '#1abc9c', '#e67e22', '#34495e']
 
         if expense_data:
-            # Pie chart
             ax1 = fig.add_subplot(2, 1, 1)
             categories = [item[0] for item in expense_data[:8]]
             amounts = [abs(item[1]) for item in expense_data[:8]]
@@ -368,7 +319,6 @@ class FinanceTracker:
 
             ax1.set_title('Kategoriye Göre Giderler', fontsize=14, weight='bold', pad=15)
 
-            # Horizontal bar chart
             ax2 = fig.add_subplot(2, 1, 2)
             y_pos = np.arange(len(categories))
             colors_bar = plt.cm.Spectral(np.linspace(0.2, 0.8, len(categories)))
@@ -382,7 +332,6 @@ class FinanceTracker:
             ax2.grid(True, alpha=0.3, axis='x', linestyle='--')
             ax2.set_facecolor('#f8f9fa')
 
-            # Add value labels
             for i, (bar, value) in enumerate(zip(bars, amounts)):
                 width = bar.get_width()
                 ax2.text(width, bar.get_y() + bar.get_height() / 2.,
@@ -396,7 +345,6 @@ class FinanceTracker:
         canvas_widget = canvas.get_tk_widget()
         canvas_widget.pack(fill=tk.BOTH, expand=True)
 
-        # Add interactive tooltip with category data
         data_dict = {cat: amt for cat, amt in zip(categories, amounts)}
         self.add_category_tooltip(canvas, fig, data_dict)
 
@@ -410,7 +358,6 @@ class FinanceTracker:
 
         x = np.arange(len(months))
 
-        # Line chart with area fill
         ax1 = fig.add_subplot(2, 1, 1)
         ax1.plot(x, income, marker='o', linewidth=3, markersize=8,
                  color=self.colors['success'], label='Gelir', linestyle='-')
@@ -428,7 +375,6 @@ class FinanceTracker:
         ax1.grid(True, alpha=0.3, linestyle='--')
         ax1.set_facecolor('#f8f9fa')
 
-        # Net savings bar chart
         ax2 = fig.add_subplot(2, 1, 2)
         net = [i - e for i, e in zip(income, expenses)]
         colors_net = [self.colors['success'] if n >= 0 else self.colors['danger'] for n in net]
@@ -436,7 +382,6 @@ class FinanceTracker:
         bars = ax2.bar(x, net, color=colors_net, alpha=0.8, edgecolor='white', linewidth=2)
         ax2.axhline(y=0, color='black', linestyle='-', linewidth=1.5)
 
-        # Add value labels
         for i, (bar, value) in enumerate(zip(bars, net)):
             height = bar.get_height()
             ax2.text(bar.get_x() + bar.get_width() / 2., height,
@@ -458,7 +403,6 @@ class FinanceTracker:
         canvas_widget = canvas.get_tk_widget()
         canvas_widget.pack(fill=tk.BOTH, expand=True)
 
-        # Add interactive tooltip with date and amount data
         data_dict = {
             'months': months,
             'income': income,
@@ -483,7 +427,6 @@ class FinanceTracker:
             if event.inaxes:
                 y = event.ydata
 
-                # Find closest category
                 categories = list(data_dict.keys())
                 if 0 <= y < len(categories):
                     idx = int(round(y))
@@ -510,7 +453,6 @@ class FinanceTracker:
         canvas.mpl_connect('axes_leave_event', on_leave)
 
     def add_monthly_tooltip(self, canvas, fig, data_dict):
-        """Add tooltip showing date and amounts"""
 
         tooltip = tk.Label(canvas.get_tk_widget(), text="",
                            bg='#2c3e50', fg='white',
@@ -530,7 +472,6 @@ class FinanceTracker:
         def on_motion(event):
             if event.inaxes:
                 x = event.xdata
-                # Find closest month
                 if x is not None and 0 <= x < len(months):
                     idx = int(round(x))
                     if 0 <= idx < len(months):
@@ -562,21 +503,17 @@ class FinanceTracker:
         canvas.mpl_connect('axes_leave_event', on_leave)
 
     def create_expense_chart(self):
-        # Get data
         expense_data = self.db.get_expenses_by_category()
         monthly_data = self.db.get_monthly_summary()
 
         if not expense_data and not monthly_data:
             return
 
-        # Create figure with multiple subplots
         fig = Figure(figsize=(14, 10), facecolor='#fafafa')
 
-        # Color schemes
         colors_pie = ['#e74c3c', '#3498db', '#f39c12', '#2ecc71', '#9b59b6', '#1abc9c', '#e67e22', '#34495e']
 
         if expense_data:
-            # 1. Donut chart - Expenses by category
             ax1 = fig.add_subplot(2, 3, 1)
             categories = [item[0] for item in expense_data]
             amounts = [abs(item[1]) for item in expense_data]
@@ -592,7 +529,6 @@ class FinanceTracker:
             ax1.set_title('Gider Dağılımı', fontsize=12, weight='bold', pad=15)
 
         if monthly_data and len(monthly_data) > 0:
-            # 2. Line chart with area fill
             ax2 = fig.add_subplot(2, 3, 2)
             months = [item[0] for item in monthly_data[-6:]]
             income = [item[1] for item in monthly_data[-6:]]
@@ -615,7 +551,6 @@ class FinanceTracker:
             ax2.grid(True, alpha=0.3, linestyle='--')
             ax2.set_facecolor('#f8f9fa')
 
-            # 3. Bar chart comparison
             ax3 = fig.add_subplot(2, 3, 3)
             width = 0.35
             ax3.bar(x - width / 2, income, width, label='Gelir',
@@ -631,7 +566,6 @@ class FinanceTracker:
             ax3.grid(True, alpha=0.3, axis='y', linestyle='--')
             ax3.set_facecolor('#f8f9fa')
 
-            # 4. Net savings
             ax4 = fig.add_subplot(2, 3, 4)
             net = [i - e for i, e in zip(income, expenses)]
             colors_net = ['#2ecc71' if n >= 0 else '#e74c3c' for n in net]
@@ -639,7 +573,6 @@ class FinanceTracker:
             bars = ax4.bar(x, net, color=colors_net, alpha=0.8, edgecolor='white', linewidth=1.5)
             ax4.axhline(y=0, color='black', linestyle='-', linewidth=1)
 
-            # Add value labels
             for i, (bar, value) in enumerate(zip(bars, net)):
                 height = bar.get_height()
                 ax4.text(bar.get_x() + bar.get_width() / 2., height,
@@ -654,7 +587,6 @@ class FinanceTracker:
             ax4.grid(True, alpha=0.3, axis='y', linestyle='--')
             ax4.set_facecolor('#f8f9fa')
 
-            # 5. Horizontal bar - Categories
             if expense_data:
                 ax5 = fig.add_subplot(2, 3, 5)
                 categories_top = [item[0] for item in expense_data[:6]]
@@ -672,14 +604,12 @@ class FinanceTracker:
                 ax5.grid(True, alpha=0.3, axis='x', linestyle='--')
                 ax5.set_facecolor('#f8f9fa')
 
-                # Add value labels
                 for i, (bar, value) in enumerate(zip(bars, amounts_top)):
                     width = bar.get_width()
                     ax5.text(width, bar.get_y() + bar.get_height() / 2.,
                              f'T{value:,.0f}',
                              ha='left', va='center', fontsize=7, weight='bold')
 
-            # 6. Cumulative analysis
             ax6 = fig.add_subplot(2, 3, 6)
             cumulative_income = np.cumsum(income)
             cumulative_expenses = np.cumsum(expenses)
@@ -709,11 +639,9 @@ class FinanceTracker:
     def show_add_transaction(self, trans_type):
         self.clear_frame()
 
-        # Main container - full screen
         main_container = tk.Frame(self.main_frame, bg=self.colors['light'])
         main_container.pack(fill=tk.BOTH, expand=True)
 
-        # Header with color based on transaction type
         header_color = self.colors['success'] if trans_type == "Income" else self.colors['danger']
         header_icon = "💰" if trans_type == "Gelir" else "💸"
 
@@ -726,7 +654,6 @@ class FinanceTracker:
                  bg=header_color,
                  fg='white').pack(side=tk.LEFT, padx=30, pady=20)
 
-        # Cancel button in header
         cancel_btn = tk.Button(header, text="❌ İptal et",
                                command=self.show_dashboard,
                                bg='white',
@@ -747,19 +674,15 @@ class FinanceTracker:
         cancel_btn.bind('<Enter>', on_enter_cancel)
         cancel_btn.bind('<Leave>', on_leave_cancel)
 
-        # Content container - full width with grid layout
         content = tk.Frame(main_container, bg='white')
         content.pack(fill=tk.BOTH, expand=True, padx=60, pady=40)
 
-        # Configure grid for 2 columns
         content.grid_columnconfigure(0, weight=1)
         content.grid_columnconfigure(1, weight=1)
 
-        # Left column - Amount and Category
         left_column = tk.Frame(content, bg='white')
         left_column.grid(row=0, column=0, sticky='nsew', padx=(0, 30))
 
-        # Amount field
         amount_frame = tk.Frame(left_column, bg='white')
         amount_frame.pack(fill=tk.X, pady=15)
 
@@ -786,7 +709,6 @@ class FinanceTracker:
         amount_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=15, padx=(0, 15))
         amount_entry.focus()
 
-        # Category field
         category_frame = tk.Frame(left_column, bg='white')
         category_frame.pack(fill=tk.X, pady=15)
 
@@ -803,11 +725,9 @@ class FinanceTracker:
                                          height=12)
         category_dropdown.pack(fill=tk.X, ipady=12)
 
-        # Right column - Description and Date
         right_column = tk.Frame(content, bg='white')
         right_column.grid(row=0, column=1, sticky='nsew', padx=(30, 0))
 
-        # Description field
         desc_frame = tk.Frame(right_column, bg='white')
         desc_frame.pack(fill=tk.X, pady=15)
 
@@ -828,7 +748,6 @@ class FinanceTracker:
                                      bd=0)
         description_entry.pack(fill=tk.X, pady=15, padx=15)
 
-        # Date field with calendar
         date_frame = tk.Frame(right_column, bg='white')
         date_frame.pack(fill=tk.X, pady=15)
 
@@ -837,7 +756,6 @@ class FinanceTracker:
                  bg='white',
                  fg=self.colors['dark']).pack(anchor='w', pady=(0, 10))
 
-        # Use DateEntry from tkcalendar for calendar widget
         date_entry = DateEntry(date_frame,
                                width=40,
                                background=self.colors['primary'],
@@ -848,7 +766,6 @@ class FinanceTracker:
                                state='readonly')
         date_entry.pack(fill=tk.X, ipady=12)
 
-        # Save transaction function
         def save_transaction():
             try:
                 amount = amount_var.get()
@@ -882,11 +799,9 @@ class FinanceTracker:
             except Exception as e:
                 messagebox.showerror("❌ Hata", str(e))
 
-        # Bottom section - Save button (full width)
         bottom_section = tk.Frame(content, bg='white')
         bottom_section.grid(row=1, column=0, columnspan=2, sticky='ew', pady=(40, 0))
 
-        # Save button - large and centered
         save_btn = tk.Button(bottom_section, text=f"💾 Save {trans_type}",
                              command=save_transaction,
                              bg=header_color,
@@ -898,7 +813,6 @@ class FinanceTracker:
                              pady=20)
         save_btn.pack(expand=True)
 
-        # Hover effects for save button
         def on_enter_save(e):
             save_btn['bg'] = self.colors['secondary']
 
@@ -914,11 +828,9 @@ class FinanceTracker:
         ttk.Label(self.main_frame, text="All Transactions",
                   font=("Arial", 16, "bold")).pack(pady=10)
 
-        # Add filter options
         filter_frame = ttk.Frame(self.main_frame)
         filter_frame.pack(fill=tk.X, pady=10)
 
-        # Type filter
         ttk.Label(filter_frame, text="Type:").pack(side=tk.LEFT, padx=5)
         type_var = tk.StringVar()
         type_dropdown = ttk.Combobox(filter_frame, textvariable=type_var,
@@ -927,7 +839,6 @@ class FinanceTracker:
         type_dropdown.set("All")
         type_dropdown.pack(side=tk.LEFT, padx=5)
 
-        # Category filter
         ttk.Label(filter_frame, text="Category:").pack(side=tk.LEFT, padx=5)
         category_var = tk.StringVar()
         categories = ["All"] + self.db.get_categories()
@@ -936,7 +847,6 @@ class FinanceTracker:
         category_dropdown.set("All")
         category_dropdown.pack(side=tk.LEFT, padx=5)
 
-        # Date range filter
         ttk.Label(filter_frame, text="From:").pack(side=tk.LEFT, padx=5)
         from_date_var = tk.StringVar()
         ttk.Entry(filter_frame, textvariable=from_date_var, width=10).pack(side=tk.LEFT, padx=5)
@@ -945,7 +855,6 @@ class FinanceTracker:
         to_date_var = tk.StringVar()
         ttk.Entry(filter_frame, textvariable=to_date_var, width=10).pack(side=tk.LEFT, padx=5)
 
-        # Create treeview for transactions
         columns = ("ID", "Date", "Type", "Category", "Amount", "Description")
         tree = ttk.Treeview(self.main_frame, columns=columns, show="headings", height=20)
 
@@ -955,34 +864,26 @@ class FinanceTracker:
 
         tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # Function to load and filter transactions
         def load_transactions():
-            # Clear existing items
             for item in tree.get_children():
                 tree.delete(item)
 
-            # Get all transactions
             all_transactions = self.db.get_all_transactions()
 
-            # Apply filters
             selected_type = type_var.get()
             selected_category = category_var.get()
             from_date = from_date_var.get().strip()
             to_date = to_date_var.get().strip()
 
             for trans in all_transactions:
-                # trans = (id, date, type, category, amount, description)
                 trans_id, trans_date, trans_type, trans_category, trans_amount, trans_desc = trans
 
-                # Filter by type
                 if selected_type != "All" and trans_type != selected_type:
                     continue
 
-                # Filter by category
                 if selected_category != "All" and trans_category != selected_category:
                     continue
 
-                # Filter by date range
                 if from_date:
                     try:
                         if trans_date < from_date:
@@ -997,16 +898,13 @@ class FinanceTracker:
                     except:
                         pass
 
-                # Add to tree
                 tree.insert("", "end", values=trans)
 
-        # Search button
         def search_transactions():
             load_transactions()
 
         ttk.Button(filter_frame, text="Search", command=search_transactions).pack(side=tk.LEFT, padx=10)
 
-        # Reset button
         def reset_filters():
             type_var.set("All")
             category_var.set("All")
@@ -1016,10 +914,8 @@ class FinanceTracker:
 
         ttk.Button(filter_frame, text="Reset", command=reset_filters).pack(side=tk.LEFT, padx=5)
 
-        # Load all transactions initially
         load_transactions()
 
-        # Back button
         ttk.Button(self.main_frame, text="Back to Dashboard",
                    command=self.show_dashboard).pack(pady=10)
 
@@ -1029,14 +925,13 @@ class FinanceTracker:
         ttk.Label(self.main_frame, text=f"{period} Repor",
                   font=("Arial", 16, "bold")).pack(pady=10)
 
-        # Generate report data based on period
         if period == "Daily":
             data = self.db.get_daily_summary()
             x_label = "Gün"
         elif period == "Monthly":
             data = self.db.get_monthly_summary()
             x_label = "Ay"
-        else:  # Yearly
+        else:
             data = self.db.get_yearly_summary()
             x_label = "Yıl"
 
@@ -1046,13 +941,11 @@ class FinanceTracker:
                        command=self.show_dashboard).pack(pady=10)
             return
 
-        # Create figure
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
 
-        # Plot income vs expenses
         dates = [item[0] for item in data]
         income = [item[1] for item in data]
-        expenses = [abs(item[2]) for item in data]  # Make expenses positive for the chart
+        expenses = [abs(item[2]) for item in data]
 
         ax1.bar(dates, income, width=0.4, label='Gelir', color='green')
         ax1.bar([str(d) for d in dates], expenses, width=0.4, label='Gedir', color='red',
@@ -1061,7 +954,6 @@ class FinanceTracker:
         ax1.set_title(f'{period} Gelir vs Gedir')
         ax1.legend()
 
-        # Plot net income
         net = [i - e for i, e in zip(income, expenses)]
         ax2.bar(dates, net, color='blue' if net[-1] >= 0 else 'red')
         ax2.axhline(0, color='black', linewidth=0.5)
@@ -1071,12 +963,10 @@ class FinanceTracker:
 
         plt.tight_layout()
 
-        # Create canvas and add to tkinter window
         canvas = FigureCanvasTkAgg(fig, master=self.main_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # Back button
         ttk.Button(self.main_frame, text="Panoya geri dön",
                    command=self.show_dashboard).pack(pady=10)
 
@@ -1215,11 +1105,9 @@ class FinanceTracker:
     def manage_categories(self):
         self.clear_frame()
 
-        # Main container - full screen
         main_container = tk.Frame(self.main_frame, bg=self.colors['light'])
         main_container.pack(fill=tk.BOTH, expand=True)
 
-        # Header - full width
         header = tk.Frame(main_container, bg=self.colors['secondary'], height=80)
         header.pack(fill=tk.X)
         header.pack_propagate(False)
@@ -1229,7 +1117,6 @@ class FinanceTracker:
                  bg=self.colors['secondary'],
                  fg='white').pack(side=tk.LEFT, padx=30, pady=20)
 
-        # Back button in header
         back_btn = tk.Button(header, text="Panoya geri dön",
                              command=self.show_dashboard,
                              bg='white',
@@ -1250,11 +1137,9 @@ class FinanceTracker:
         back_btn.bind('<Enter>', on_enter_back)
         back_btn.bind('<Leave>', on_leave_back)
 
-        # Content container - full width
         content = tk.Frame(main_container, bg='white')
         content.pack(fill=tk.BOTH, expand=True, padx=40, pady=30)
 
-        # Add Category Section
         add_section = tk.Frame(content, bg='white')
         add_section.pack(fill=tk.X, pady=(0, 30))
 
@@ -1263,11 +1148,9 @@ class FinanceTracker:
                  bg='white',
                  fg=self.colors['primary']).pack(anchor='w', pady=(0, 15))
 
-        # Input container
         input_container = tk.Frame(add_section, bg='white')
         input_container.pack(fill=tk.X)
 
-        # Category name input
         input_frame = tk.Frame(input_container, bg='#ecf0f1', relief='flat', bd=1)
         input_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
 
@@ -1286,7 +1169,6 @@ class FinanceTracker:
         category_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=12, padx=(0, 10))
         category_entry.insert(0, "Kategori adını girin...")
 
-        # Placeholder behavior
         def on_entry_click(event):
             if category_entry.get() == "Kategori adını girin...":
                 category_entry.delete(0, tk.END)
@@ -1301,7 +1183,6 @@ class FinanceTracker:
         category_entry.bind('<FocusOut>', on_focusout)
         category_entry.config(fg='gray')
 
-        # Add button
         def add_category():
             category = new_category_var.get().strip()
             if category and category != "Kategori adını girin...":
@@ -1329,7 +1210,6 @@ class FinanceTracker:
                             pady=12)
         add_btn.pack(side=tk.LEFT)
 
-        # Hover effect for add button
         def on_enter_add(e):
             add_btn['bg'] = '#27ae60'
 
@@ -1339,11 +1219,9 @@ class FinanceTracker:
         add_btn.bind('<Enter>', on_enter_add)
         add_btn.bind('<Leave>', on_leave_add)
 
-        # Separator
         separator = tk.Frame(content, bg='#bdc3c7', height=2)
         separator.pack(fill=tk.X, pady=20)
 
-        # Categories List Section
         list_section = tk.Frame(content, bg='white')
         list_section.pack(fill=tk.BOTH, expand=True)
 
@@ -1352,7 +1230,6 @@ class FinanceTracker:
                  bg='white',
                  fg=self.colors['primary']).pack(anchor='w', pady=(0, 15))
 
-        # Scrollable categories container - full height
         categories_canvas = tk.Canvas(list_section, bg='white', highlightthickness=0)
         categories_scrollbar = ttk.Scrollbar(list_section, orient="vertical", command=categories_canvas.yview)
         categories_frame = tk.Frame(categories_canvas, bg='white')
@@ -1380,15 +1257,12 @@ class FinanceTracker:
                 return
 
             for i, category in enumerate(categories):
-                # Category card
                 cat_card = tk.Frame(categories_frame, bg='#f8f9fa', relief='solid', bd=1)
                 cat_card.pack(fill=tk.X, pady=5, padx=5)
 
-                # Left side - icon and name
                 left_frame = tk.Frame(cat_card, bg='#f8f9fa')
                 left_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=15, pady=12)
 
-                # Category icon
                 category_icons = {
                     'Maaş': '💰',  # Salary
                     'Serbest Çalışma': '💼',  # Freelance
@@ -1413,14 +1287,12 @@ class FinanceTracker:
                          bg='#f8f9fa',
                          fg=self.colors['dark']).pack(side=tk.LEFT)
 
-                # Right side - status and delete button
                 right_frame = tk.Frame(cat_card, bg='#f8f9fa')
                 right_frame.pack(side=tk.RIGHT, padx=15, pady=12)
 
                 in_use = self.db.is_category_in_use(category)
 
                 if in_use:
-                    # In use badge
                     badge = tk.Label(right_frame, text="Kullanımda",
                                      font=('Segoe UI', 9, 'bold'),
                                      bg=self.colors['success'],
@@ -1429,7 +1301,6 @@ class FinanceTracker:
                                      pady=5)
                     badge.pack(side=tk.LEFT, padx=5)
                 else:
-                    # Delete button
                     def delete_category(cat=category):
                         if messagebox.askyesno("⚠️ Silme Onayı",
                                                f"'{cat}' kategorisini silmek istediğinizden emin misiniz?\n\nBu eylem geri alınamaz."):
@@ -1447,7 +1318,6 @@ class FinanceTracker:
                                            padx=15, pady=5)
                     delete_btn.pack(side=tk.LEFT, padx=5)
 
-                    # Hover effect
                     def on_enter_del(e, btn=delete_btn):
                         btn['bg'] = '#c0392b'
 
@@ -1473,7 +1343,6 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            # Categories table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS categories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1481,7 +1350,6 @@ class Database:
                 )
             ''')
 
-            # Transactions table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS transactions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1499,8 +1367,8 @@ class Database:
 
     def initialize_default_categories(self):
         default_categories = [
-            "Maaş", "Serbest Çalışma", "Yatırımlar",  # Gelir Kategorileri (Income categories)
-            "Konut", "Yiyecek", "Ulaşım",  # Gider Kategorileri (Expense categories)
+            "Maaş", "Serbest Çalışma", "Yatırımlar",
+            "Konut", "Yiyecek", "Ulaşım",
             "Fatura", "Eğlence", "Sağlık", "Alışveriş", "Diğer"
         ]
 
@@ -1510,7 +1378,7 @@ class Database:
                 try:
                     cursor.execute("INSERT INTO categories (name) VALUES (?)", (category,))
                 except sqlite3.IntegrityError:
-                    pass  # Category already exists
+                    pass
             conn.commit()
 
     def add_category(self, name):
@@ -1567,11 +1435,9 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            # Get total income
             cursor.execute("SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE type = 'Income'")
             total_income = cursor.fetchone()[0] or 0
 
-            # Get total expenses
             cursor.execute("SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE type = 'Expense'")
             total_expenses = cursor.fetchone()[0] or 0
 
